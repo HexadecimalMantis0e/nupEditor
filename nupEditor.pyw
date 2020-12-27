@@ -153,9 +153,7 @@ class nupGui:
             MsgBox = tkMessageBox.showwarning("Warning", "Selected file is not a DDS image! It will not be imported!", icon = "warning")
             f.close()
         else:
-            f.seek(0x00, os.SEEK_END)
-            inputSize = f.tell()
-            f.seek(0x00, os.SEEK_SET)
+            inputSize = self.getFileSize(f)
             if inputSize > self.currentSize:
                 MsgBox = tkMessageBox.showwarning("Warning", "Selected DDS size is too large! It will not be imported!", icon = "warning")
                 f.close()
