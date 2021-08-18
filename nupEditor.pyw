@@ -228,7 +228,11 @@ class nupEditor:
         except FileNotFoundError:
             pass
 
-root = tk.Tk()
-root.resizable(0, 0)
-gui = nupEditor(root)
-root.mainloop()
+def main():
+    root = tk.Tk()
+    root.resizable(0, 0)
+    gui = nupEditor(root)
+    root.mainloop()
+
+if __name__ == "__main__":
+    main()
