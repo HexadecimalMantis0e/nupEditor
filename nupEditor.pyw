@@ -59,9 +59,11 @@ class nupEditor:
 
     def openNup(self):
         try:
-            name = filedialog.askopenfilename(filetypes = (("Bionicle Heroes NU20", "*.nup"), ("All Files", "*.*")))
-            f = open(name, "rb")
-            magic = struct.unpack('I', f.read(4))[0]
+            filePath = filedialog.askopenfilename(filetypes = (("Bionicle Heroes NU20", "*.nup"), ("All Files", "*.*")))
+            if (filePath):
+                self.fileName = os.path.basename(filePath)
+            f = open(filePath, "rb")
+            magic = struct.unpack("<I", f.read(4))[0]
             if magic != 0x3032554E:
                 msgBox = messagebox.showerror("Error", "Selected file is not a NUP archive! It will not be loaded!")
                 f.close()
@@ -75,16 +77,15 @@ class nupEditor:
             pass
 
     def linearScan(self, filePointer):
-        sFlag = False
-        theSize = self.getFileSize(filePointer)
-        fileSizeDiv = theSize // 0x04
+        searchFlag = False
+        fileSizeDiv = self.getFileSize(filePointer) // 0x04
         for i in range(0, fileSizeDiv):
-            scan = struct.unpack('I', filePointer.read(4))[0]
+            scan = struct.unpack("<I", filePointer.read(4))[0]
             if scan == 0x30545354:
-                index = filePointer.tell()
-                sFlag = True
+                index = filePointer.tell() - 0x04
+                searchFlag = True
                 break
-        if sFlag == True:
+        if searchFlag == True:
             return index
         else:
             return None
@@ -103,25 +104,25 @@ class nupEditor:
             self.clearData()
         else:
             self.fb.seek(self.indexLocation, os.SEEK_SET)
-            fullSize = struct.unpack('I', self.fb.read(4))[0]
-            self.indexCount = struct.unpack('I', self.fb.read(4))[0]
+            self.fb.seek(0x08, os.SEEK_CUR)
+            self.indexCount = struct.unpack("<I", self.fb.read(4))[0]
             if self.indexCount == 0x00:
                 msgBox = messagebox.showerror("Error", "No textures in index!")
                 self.clearData()
             else:
                 self.fb.seek(0x08, os.SEEK_CUR)
-                self.indexSize = struct.unpack('I', self.fb.read(4))[0]
+                self.indexSize = struct.unpack("<I", self.fb.read(4))[0]
                 self.fb.seek(0x08, os.SEEK_CUR)
                 self.entryList = []
                 self.imageList = []
                 imageListCount = []
                 for i in range(0, self.indexCount):
                     entryLocation = self.fb.tell()
-                    entryWidth = struct.unpack('I', self.fb.read(4))[0]
-                    entryHeight = struct.unpack('I', self.fb.read(4))[0]
-                    entryMips = struct.unpack('I', self.fb.read(4))[0]
+                    entryWidth = struct.unpack("<I", self.fb.read(4))[0]
+                    entryHeight = struct.unpack("<I", self.fb.read(4))[0]
+                    entryMips = struct.unpack("<I", self.fb.read(4))[0]
                     self.fb.seek(0x04, os.SEEK_CUR)
-                    entryAddress = struct.unpack('I', self.fb.read(4))[0]
+                    entryAddress = struct.unpack("<I", self.fb.read(4))[0]
                     if ((entryWidth != 0x00) and (entryHeight != 0x00)):
                         self.entryList.append(entryLocation)
                         self.imageList.append(entryAddress)
@@ -137,14 +138,15 @@ class nupEditor:
                 self.loadTexture()
 
     def loadTexture(self):
-        self.ddsEntry = self.entryList[int(self.listDropDown.get()) - 1]
-        self.ddsLocation = self.imageList[int(self.listDropDown.get()) - 1] + self.indexLocation + self.indexSize + 0x04
+        self.ddsNumber = int(self.listDropDown.get())
+        self.ddsEntry = self.entryList[self.ddsNumber - 1]
+        self.ddsLocation = self.imageList[self.ddsNumber - 1] + self.indexLocation + self.indexSize + 0x08
         self.fb.seek(self.ddsLocation, os.SEEK_SET)
         self.fb.seek(0x0C, os.SEEK_CUR)
-        ddsHeight = struct.unpack('I', self.fb.read(4))[0]
-        ddsWidth = struct.unpack('I', self.fb.read(4))[0]
+        ddsHeight = struct.unpack("<I", self.fb.read(4))[0]
+        ddsWidth = struct.unpack("<I", self.fb.read(4))[0]
         self.fb.seek(0x08, os.SEEK_CUR)
-        ddsMips = struct.unpack('I', self.fb.read(4))[0]
+        ddsMips = struct.unpack("<I", self.fb.read(4))[0]
         self.fb.seek(0x34, os.SEEK_CUR)
         ddsType = self.fb.read(0x04).decode()
         self.fb.seek(-0x58, os.SEEK_CUR)
@@ -176,29 +178,29 @@ class nupEditor:
 
     def saveNup(self):
         try:
-            saveNupName = filedialog.asksaveasfile(mode = "wb", defaultextension = ".nup", filetypes = (("Bionicle Heroes NU20", "*.nup"), ("All Files", "*.*")))
+            filePath = filedialog.asksaveasfile(mode = "wb", initialfile = self.fileName, defaultextension = ".nup", filetypes = (("Bionicle Heroes NU20", "*.nup"), ("All Files", "*.*")))
             self.fb.seek(0x00, os.SEEK_SET)
             fileBytes = self.fb.read()
-            saveNupName.write(fileBytes)
-            saveNupName.close()
+            filePath.write(fileBytes)
+            filePath.close()
         except AttributeError:
             pass
 
     def saveTexture(self):
         try:
-            saveTextureName = filedialog.asksaveasfile(mode = "wb", defaultextension = ".dds", filetypes = (("DDS image", "*.dds"), ("All Files", "*.*")))
+            filePath = filedialog.asksaveasfile(mode = "wb", initialfile = str(self.ddsNumber) + ".dds", defaultextension = ".dds", filetypes = (("DDS image", "*.dds"), ("All Files", "*.*")))
             self.fb.seek(self.ddsLocation, os.SEEK_SET)
             fileBytes = self.fb.read(self.currentSize)
-            saveTextureName.write(fileBytes)
-            saveTextureName.close()
+            filePath.write(fileBytes)
+            filePath.close()
         except AttributeError:
             pass
 
     def replaceTexture(self):
         try:
-            name = filedialog.askopenfilename(filetypes = (("DDS image", "*.dds"), ("All Files", "*.*")))
-            f = open(name, "rb")
-            magic = struct.unpack('I', f.read(4))[0]
+            filePath = filedialog.askopenfilename(filetypes = (("DDS image", "*.dds"), ("All Files", "*.*")))
+            f = open(filePath, "rb")
+            magic = struct.unpack("<I", f.read(4))[0]
             if magic != 0x20534444:
                 msgBox = messagebox.showerror("Error", "Selected file is not a DDS image! It will not be imported!")
                 f.close()
@@ -209,20 +211,20 @@ class nupEditor:
                     f.close()
                 else:
                     f.seek(0x0C, os.SEEK_CUR)
-                    height = struct.unpack('I', f.read(4))[0]
-                    width = struct.unpack('I', f.read(4))[0]
+                    height = struct.unpack("<I", f.read(4))[0]
+                    width = struct.unpack("<I", f.read(4))[0]
                     f.seek(0x08, os.SEEK_CUR)
-                    mips = struct.unpack('I', f.read(4))[0]
+                    mips = struct.unpack("<I", f.read(4))[0]
                     self.fb.seek(self.ddsEntry)
-                    self.fb.write(struct.pack('I', height))
-                    self.fb.write(struct.pack('I', width))
-                    self.fb.write(struct.pack('I', mips))
+                    self.fb.write(struct.pack("<I", height))
+                    self.fb.write(struct.pack("<I", width))
+                    self.fb.write(struct.pack("<I", mips))
                     f.seek(0x00, os.SEEK_SET)
-                    inputTexture = f.read()
-                    self.fb.seek(self.ddsLocation, os.SEEK_SET)
-                    self.fb.write(inputTexture)
-                    msgBox = messagebox.showinfo("Info", "Texture replaced successfully.")
+                    fileBytes = f.read()
                     f.close()
+                    self.fb.seek(self.ddsLocation, os.SEEK_SET)
+                    self.fb.write(fileBytes)
+                    msgBox = messagebox.showinfo("Info", "Texture replaced successfully.")
                     # Call load texture so the change is visible
                     self.loadTexture()
         except FileNotFoundError:
