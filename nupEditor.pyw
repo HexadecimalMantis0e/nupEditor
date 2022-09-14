@@ -8,13 +8,12 @@ import io
 class nupEditor:
     def __init__(self, window):
         window.title("nupEditor")
-        window.bind("<B1-Motion>", self.moveTextureEvent)
         self.currentTexture = None
         self.menuBar = tk.Menu(window)
         self.menuBar.add_command(label = "Open Nup", command = lambda: self.openNup())
         self.menuBar.add_command(label = "Save Nup", state = "disabled", command = lambda: self.saveNup())
         self.menuBar.add_command(label = "Replace Texture", state = "disabled", command = lambda: self.replaceTexture())
-        self.menuBar.add_command(label = "Save Texture", state = "disabled", command = lambda: self.saveTexture())
+        self.menuBar.add_command(label = "Extract Texture", state = "disabled", command = lambda: self.extractTexture())
         window.config(menu = self.menuBar)
         self.textureFrame = tk.LabelFrame(window, borderwidth = 0, highlightthickness = 0)
         self.textureFrame.grid(row = 0, column = 0, sticky = "NW")
@@ -41,6 +40,7 @@ class nupEditor:
         self.canvasFrame.grid(row = 0, column = 1)
         self.textureCanvas = tk.Canvas(self.canvasFrame, bg = "gray", highlightthickness = 0, height = 522, width = 522)
         self.textureCanvas.grid(row = 0, column = 0)
+        self.textureCanvas.bind("<B1-Motion>", self.moveTextureEvent)
 
     def clearData(self):
         self.fb = io.BytesIO()
@@ -55,7 +55,7 @@ class nupEditor:
         self.textureCanvas.delete("all")
         self.menuBar.entryconfig("Save Nup", state = "disabled")
         self.menuBar.entryconfig("Replace Texture", state = "disabled")
-        self.menuBar.entryconfig("Save Texture", state = "disabled")
+        self.menuBar.entryconfig("Extract Texture", state = "disabled")
 
     def openNup(self):
         filePath = filedialog.askopenfile(mode = "rb", filetypes = (("Bionicle Heroes NU20", "*.nup"), ("All Files", "*.*")))
@@ -134,7 +134,7 @@ class nupEditor:
                 # enable the menuBar options
                 self.menuBar.entryconfig("Save Nup", state = "active")
                 self.menuBar.entryconfig("Replace Texture", state = "active")
-                self.menuBar.entryconfig("Save Texture", state = "active")
+                self.menuBar.entryconfig("Extract Texture", state = "active")
                 # Init the dropdown
                 for i in range(0, len(self.imageList)):
                     imageListCount.append(i + 1)
@@ -192,7 +192,7 @@ class nupEditor:
             filePath.write(self.fb.read())
             filePath.close()
 
-    def saveTexture(self):
+    def extractTexture(self):
         filePath = filedialog.asksaveasfile(mode = "wb", initialfile = str(self.ddsNumber) + ".dds", defaultextension = ".dds", filetypes = (("DDS image", "*.dds"), ("All Files", "*.*")))
 
         if filePath:
